@@ -1,19 +1,5 @@
 # faft_fw
 The first script from wwz which can help some users to resolve the problem of  building,flash and running faft-test !
-
-/********************************************************
-@ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
-@ version: V1.1
-@ auther:  wwz
-@ Time  :  2017/12/1
-********************************************************/
-Fixed problems:
-1.fixed a problem that failed to store log when failed to run FAFT test
-
-Modified files:
-1.faft_fw.sh
-
-
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
 @ version: V1.0

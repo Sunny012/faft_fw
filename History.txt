@@ -1,0 +1,26 @@
+/********************************************************
+@ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
+@ version: V1.2
+@ auther:  wwz
+@ Time  :  2017/12/9
+********************************************************/
+Fixed problems:
+1.Add the ability to test a particular FAFT individually!
+
+Modified files:
+1.faft_fw.sh
+
+
+/********************************************************
+@ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
+@ version: V1.1
+@ auther:  wwz
+@ Time  :  2017/12/1
+********************************************************/
+Fixed problems:
+1.fixed a problem that failed to store log when failed to run FAFT test
+
+Modified files:
+1.faft_fw.sh
+
+

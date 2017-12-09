@@ -1,4 +1,4 @@
-#//bin/bash
+#!/bin/bash
 
 # ver :  v1.0
 # time:  2017/11/06/14:41
@@ -11,6 +11,8 @@
 declare -i index=0
 declare -i argu_types_nums=0
 declare -i total_argunums=0
+declare -i DATE_YMD
+declare -i DATE_HMS
 
 #declare an array to receive all arguements
 declare -a argu
@@ -25,12 +27,10 @@ declare -a argu5
 
 # declare default board and ip
 BOARD=coral
-DEFAULT_IP=192.168.1.121
-
-
+DEFAULT_IP=192.168.1.123
 ############################################################
 #                                                          #  
-#    coral platform necessary operate                      #
+#    Sort the Input parameters                             #
 #	                                                       #
 #                                                          #
 #														   #
@@ -108,7 +108,7 @@ function separ_argu(){
 
 ############################################################
 #                                                          #  
-#    coral platform necessary operate                      #
+#    check                                                 #
 #	                                                       #
 #                                                          #
 #														   #
@@ -137,6 +137,29 @@ function check_is_servod_run()
 	echo -e "\033[44;37;5m servod is running ...\033[0m"
 }
 
+# check servod is run
+function check_ip(){
+	IP_Add=$1
+	echo $IP_Add | grep -e "^[0-9]\{1,3\}.[0-9]\{1,3\}.[0-9]\{1,3\}.[0-9]\{1,3\}$" > /dev/null
+	if [ $? -ne 0 ];then
+		echo -e "\033[41;37;5m the dut_IP is incorrect! \033[0m";
+		exit 1
+	fi
+	a=`echo $IP_Add|awk -F . '{print $1}'` 
+    b=`echo $IP_Add|awk -F . '{print $2}'`
+    c=`echo $IP_Add|awk -F . '{print $3}'`
+    d=`echo $IP_Add|awk -F . '{print $4}'`
+    for num in $a $b $c $d
+    do 
+   		if [ $num -gt 255 ];then 
+      		echo -e "\033[41;37;5m the dut_IP is incorrect! \033[0m";
+	   		exit 1
+    	fi 
+    done 
+	return 0;
+}
+
+
 ############################################################
 #                                                          #  
 #    build bios and ec file        						   #
@@ -159,7 +182,7 @@ function clear_buildfile()
 }
 
 # move bios&ec file
-function mv_file(){
+function mv_file_fun(){
     file_path=~/trunk/chroot/build/$BOARD/firmware
     if [ ! -d $file_path ];then
         echo -e "\033[41;37;5m bios or ec's path doesn't exist!!! \033[0m";
@@ -180,12 +203,7 @@ function mv_file(){
         exit 1;
     fi
     mv ~/trunk/firmware/$BOARD/image-coral.bin ~/trunk/firmware/$BOARD/bios.bin 
-    return 0
-}
-
-function mv_file_fun(){
-	mv_file
-	if [ $? -ne 0  ];then
+    if [ $? -ne 0  ];then
         echo -e "\033[41;37;5m bios and ec mv faily!!! \033[0m";s
         exit 1
     else
@@ -194,9 +212,11 @@ function mv_file_fun(){
 	return 0
 }
 
-
-function build_fw()
+# build local bios and ec code
+function build_fw_fun()
 {
+# clear build_files in local
+	clear_buildfile
 # build mrc first
     emerge-$BOARD chromeos-mrc --getbinpkg --binpkg-respect-use=n
 
@@ -213,28 +233,11 @@ function build_fw()
     emerge-$BOARD chromeos-firmware-ps8751 chromeos-firmware-anx3429 chromeos-ec chromeos-seabios libpayload depthcharge coreboot chromeos-bootimage
 # stop all
     cros_workon-$BOARD --all stop 
+    mv_file_fun
     return 0;
 }
 
-# build local bios and ec code
-function build_fw_fun(){
-	clear_buildfile
- 	if [ $? -ne 0 ];then
-		echo -e "\033[41;37;5m clear bios&ec files failed!! \033[0m"
-		exit 1	    
-    fi
-    echo -e "\033[44;37;5m clear bios&ec files successfully!! \033[0m"
-	build_fw
-	if [ $? -ne 0 ];then
-		echo -e "\033[41;37;5m build bios and ec failed!! \033[0m"
-		exit 1	    
-    fi
-   	echo -e "\033[44;37;5m build bios and ec successfully!! 11\033[0m"	
-   	
-    mv_file_fun
-	return 0
-}
-
+# build environment
 function build_env_fun(){
 # build hdctools
 	cros_workon --host start hdctools
@@ -265,7 +268,7 @@ function build_packages_fun(){
 
 ############################################################
 #                                                          #  
-#    flash bios and ec file                                # 
+#    flash bios,ec file and image                          # 
 #	                                                       #
 #                                                          #
 #														   #
@@ -312,47 +315,16 @@ function flash_ec_fun(){
 	return 0
 }
 
-############################################################
-#                                                          #  
-#    flash OS-Image                                        # 
-#	                                                       #
-#                                                          #
-#														   #
-############################################################
-
-function check_dut_ip()
-{
-	IP_Add=$1
-  	echo $IP_Add|grep "^[0-9]\{1,3\}\.\([0-9]\{1,3\}\.\)\{2\}[0-9]\{1,3\}$" > /dev/null; 
-  	if [ $? -ne 0 ];then 
-	   	echo -e "\033[41;37;5m the dut_IP is incorrect! \033[0m"
-   		return -1 
-  	fi 
-    a=`echo $IP_Add|awk -F . '{print $1}'` 
-    b=`echo $IP_Add|awk -F . '{print $2}'`
-    c=`echo $IP_Add|awk -F . '{print $3}'`
-    d=`echo $IP_Add|awk -F . '{print $4}'`
-    for num in $a $b $c $d 
-    do 
-    	if [ $num -gt 255 ] || [ $num -lt 0 ];then 
-        	echo -e "\033[41;37;5m the dut_IP is incorrect! \033[0m"
-	        return -1 
-    	fi 
-    done 
-    return 0
-}
-
+#　flash image to board
 function flash_image_fun(){
 	local -i timeout=0
 	IP_Add=$1
+	check_ip $IP_Add
 	os_image_filepath=~/trunk/image/chromiumos_test_image.bin
-	check_dut_ip $IP_Add
-
 	if [ ! -f $os_image_filepath ]; then
     	echo "the test image file is not exist!!"
    		exit 1
  	fi
-
 	ping -c 2 $IP_Add
  	while [ $? -ne 0 ]
 	do
@@ -389,90 +361,131 @@ function print_space(){
 	echo -e "\033[44;37;5m                      \033[0m"
 }
 
-function run_signal_fun(){
+function get_time_fun(){  #add two following functions
+	DATE_YMD=`date +%y%m%d`
+	DATE_HMS=`date +%H%M%S`
+}
+
+function creat_log_file(){
+	get_time_fun
+	file_path=~/trunk/shell_v1/FAFT_LOG
+	if [ ! -d "$file_path/Log_$DATE_YMD"  ];then
+		sudo mkdir -m 777 $file_path/Log_$DATE_YMD;
+	fi
+	if [ ! -d $file_path/Log_$DATE_YMD/Log_$DATE_HMS ];then
+		sudo mkdir -m 777 $file_path/Log_$DATE_YMD/Log_$DATE_HMS
+	fi 
+}
+
+function Check_SingleItem(){
+	Special_SignleItem=$1;
+	echo $Special_SignleItem | grep "^firmware_" > /dev/null 
+	if [ $? -ne 0 ];then
+		echo -e "\033[41;37;5m Signle Item Input wrong!! \033[0m";
+		exit 1;
+	fi
+	return 0
+}
+
+function run_MulItems_fun(){
 	IP_Add=$1
-	check_dut_ip $IP_Add 
-	case $2 in
-	"")
-		echo "******************************************" >> ~/trunk/faft/log/FaftTest_Item.log
-		date >> ~/trunk/faft/log/FaftTest_Item.log
-		while read test_item
-		do 
-		if [ "$test_item" != "" ];then
-			/usr/bin/test_that --board=$BOARD $IP_Add $test_item
-			if [ $? -ne 0 ];then
-				print_space
-				echo ""$test_item"  [FAILED]" >> ~/trunk/faft/log/FaftTest_Item.log
-				mkdir -p ~/trunk/faft/log/$test_item/fail
-				cp ~/trunk/chroot/tmp/test_that_latest/test_report.log ~/trunk/faft/log/$test_item/fail/$test_item.log
-			else
-				echo ""$test_item"  [SUCCESS]" >> ~/trunk/faft/log/FaftTest_Item.log
-			fi
-		fi			
-		done < ~/trunk/faft/Faft_TestItem.txt
-		echo "******************************************" >> ~/trunk/faft/log/FaftTest_Item.log
-		echo -e "\n" >>  ~/trunk/faft/log/FaftTest_Item.log
-		return 0
-	;;
-	*)
-		test_item=$2
-		echo "******************************************" >> ~/trunk/faft/log/FaftTest_Item.log
-		date >> ~/trunk/faft/log/FaftTest_Item.log
+	check_ip $IP_Add
+	log_file_path=~/trunk/shell_v1/FAFT_LOG/Special_MulTests_Log
+	echo "******************************************" >> $log_file_path/Special_MulTests.log
+	date >> $log_file_path/Special_MulTests.log
+	while read test_item
+	do 
+	if [ "$test_item" != "" ];then
 		/usr/bin/test_that --board=$BOARD $IP_Add $test_item
 		if [ $? -ne 0 ];then
 			print_space
-			echo ""$test_item"  [FAILED]" >> ~/trunk/faft/log/FaftTest_Item.log
-			mkdir -p ~/trunk/faft/log/$test_item/fail
-			cp ~/trunk/chroot/tmp/test_that_latest/test_report.log ~/trunk/faft/log/$test_item/fail/$test_item.log
+			echo ""$test_item"  [FAILED]" >> $log_file_path/Special_MulTests.log
 		else
-			echo ""$test_item"  [SUCCESS]" >> ~/trunk/faft/log/FaftTest_Item.log
-		fi		
-		echo "******************************************" >> ~/trunk/faft/log/FaftTest_Item.log
-		echo -e "\n" >>  ~/trunk/faft/log/FaftTest_Item.log
-		return 0
-	;;
-	esac
+			echo ""$test_item"  [SUCCESS]" >> $log_file_path/Special_MulTests.log
+		fi
+	fi			
+	done < ~/trunk/shell_v1/faft_fw/Faft_Special_MulTests_Item.txt
+	echo "******************************************" >> $log_file_path/Special_MulTests.log
+	echo -e "\n" >>  $log_file_path/Special_MulTests.log
+	return 0
+}
+
+function run_SingleItem_fun(){
+	Test_Item=$1
+	IP_Add=$2
+	check_ip $IP_Add	
+	log_file_path=~/trunk/shell_v1/FAFT_LOG/Special_MulTests_Log
+	echo "******************************************" >> $log_file_path/Special_MulTests.log
+	date >> $log_file_path/Special_MulTests.log
+	/usr/bin/test_that --board=$BOARD $IP_Add $Test_Item
+	if [ $? -ne 0 ];then
+		print_space
+		echo ""$test_item"  [FAILED]" >> $log_file_path/Special_MulTests.log
+	else
+		echo ""$test_item"  [SUCCESS]" >> $log_file_path/Special_MulTests.log
+	fi		
+	echo "******************************************" >> $log_file_path/Special_MulTests.log
+	echo -e "\n" >>  ~/trunk/faft/log/FaftTest_Item.log
+	return 0
 }
 
 function run_ecfaft_fun(){
 	IP_Add=$1
-	check_dut_ip $IP_Add
+	check_ip $IP_Add
+	creat_log_file
+	file_path=~/trunk/shell_v1/FAFT_LOG/Log_$DATE_YMD/Log_$DATE_HMS
 	/usr/bin/test_that --board=coral $IP_Add suite:faft_ec
 	if [ $? -ne 0 ];then
-## Lable-wwz-start-171201-add ##
-		mkdir -p ~/trunk/faft/log/ec      
-		cp ~/trunk/chroot/tmp/test_that_latest/test_report.log ~/trunk/faft/log/ec/ec.log
-## end Lable ##
-		echo -e "\033[41;37;5m bios faft runs failed!! \033[0m";
+		echo -e "\033[41;37;5m ec faft runs failed!! \033[0m";
+		cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/ec.log
 		exit 1
-	fi		
-	echo -e "\033[44;37;5m bios faft runs sucessfully!! \033[0m";
-	mkdir -p ~/trunk/faft/log/ec
-	cp ~/trunk/chroot/tmp/test_that_latest/test_report.log ~/trunk/faft/log/ec/ec.log
+	fi	
+	cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/ec.log	
+	echo -e "\033[44;37;5m ec faft runs sucessfully!! \033[0m";
 	return 0
 }
 
 function run_biosfaft_fun(){
 	IP_Add=$1
-	check_dut_ip $IP_Add
-	/usr/bin/test_that --board=coral $IP_Add suite:faft_bios
+	check_ip $IP_Add
+	creat_log_file
+	file_path=~/trunk/shell_v1/FAFT_LOG/Log_$DATE_YMD/Log_$DATE_HMS
+	/usr/bin/test_that --board=coral $IP_Add suite:faft_bios    
 	if [ $? -ne 0 ];then
-## Lable-wwz-start-171201-add ##
-		mkdir -p ~/trunk/faft/log/bios
-		cp ~/trunk/chroot/tmp/test_that_latest/test_report.log ~/trunk/faft/log/bios/bios.log
-## end Lable ##
+		cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/bios.log
 		echo -e "\033[41;37;5m bios faft runs failed!! \033[0m";
 		exit 1
 	fi		
+	cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/bios.log
+	echo $?
 	echo -e "\033[44;37;5m bios faft runs sucessfully!! \033[0m";
-	mkdir -p ~/trunk/faft/log/bios
-	cp ~/trunk/chroot/tmp/test_that_latest/test_report.log ~/trunk/faft/log/bios/bios.log
 	return 0
 }
 
 function run_allfaft_fun(){
-	run_ecfaft_fun $1
-	run_biosfaft_fun $1
+	IP_Add=$1
+	check_ip $IP_Add
+	creat_log_file
+	file_path=~/trunk/shell_v1/FAFT_LOG/Log_$DATE_YMD/Log_$DATE_HMS
+	#run all ec faft-test part#
+	/usr/bin/test_that --board=coral $IP_Add suite:faft_ec
+	if [ $? -ne 0 ];then
+		echo -e "\033[41;37;5m ec faft runs failed!! \033[0m";
+		cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/ec.log
+		exit 1
+	fi	
+	cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/ec.log	
+	echo -e "\033[44;37;5m ec faft runs sucessfully!! \033[0m";
+	
+	#run all bios faft-test part#
+	/usr/bin/test_that --board=coral $IP_Add suite:faft_bios    
+	if [ $? -ne 0 ];then
+		cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/bios.log
+		echo -e "\033[41;37;5m bios faft runs failed!! \033[0m";
+		exit 1
+	fi		
+	cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/bios.log
+	echo -e "\033[44;37;5m bios faft runs sucessfully!! \033[0m";	
 	return 0
 }
 
@@ -486,37 +499,37 @@ function run_allfaft_fun(){
 
 function help_fun ()
 {
-	if [ $1 = "--help" ];then
-		echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
-		echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
-		echo -e "   \033[44;37;5m |                        HELP INFORMATION                          | \033[0m";
-		echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
-		echo -e "   \033[44;37;5m |    ip_address is optional.if not written will use the default add| \033[0m"; 
-		echo -e "   \033[44;37;5m |-ress;and please pay attention the order of comand!               | \033[0m";
-		echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";		
-		echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
-		echo -e "   \033[44;37;5m | -BUILD FILE                                                      | \033[0m";
-		echo -e "   \033[44;37;5m | 	-b fw                                                          | \033[0m";
-		echo -e "   \033[44;37;5m | 	-b env                                                         | \033[0m";
-		echo -e "   \033[44;37;5m | 	-b all　　　(fw+env)                                           | \033[0m";
-		echo -e "   \033[44;37;5m | 	-b packages                                                    | \033[0m";
-		echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
-		echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
-		echo -e "   \033[44;37;5m | -FLASH FILE                                                      | \033[0m";
-		echo -e "   \033[44;37;5m | 	-f [ec]                                                        | \033[0m";
-		echo -e "   \033[44;37;5m | 	-f [bios]                                                      | \033[0m";
-		echo -e "   \033[44;37;5m | 	-f [fw] 　(ec+bios)                                            | \033[0m";
-		echo -e "   \033[44;37;5m | 	-f [image] [ip_address]                                        | \033[0m";
-		echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
-		echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
-		echo -e "   \033[44;37;5m | -RUN FAFT                                                        | \033[0m";
-		echo -e "   \033[44;37;5m | 	-r [signal] [ip_address]                                       | \033[0m";
-		echo -e "   \033[44;37;5m | 	-r [ec] [ip_address]                                           | \033[0m";
-		echo -e "   \033[44;37;5m | 	-r [bios] [ip_address]                                         | \033[0m";
-		echo -e "   \033[44;37;5m | 	-r [fw] [ip_address]　   (ec+bios)                             | \033[0m";
-		echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
-		echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
-	fi
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[44;37;5m |                        HELP INFORMATION                          | \033[0m";
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[44;37;5m |    ip_address is optional.if not written will use the default add| \033[0m"; 
+	echo -e "   \033[44;37;5m |-ress;and please pay attention the order of comand!               | \033[0m";
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";		
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[44;37;5m | -BUILD FILE                                                      | \033[0m";
+	echo -e "   \033[44;37;5m | 	-b fw                                                          | \033[0m";
+	echo -e "   \033[44;37;5m | 	-b env                                                         | \033[0m";
+	echo -e "   \033[44;37;5m | 	-b all　　　(fw+env)                                           | \033[0m";
+	echo -e "   \033[44;37;5m | 	-b packages                                                    | \033[0m";
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[44;37;5m | -FLASH FILE                                                      | \033[0m";
+	echo -e "   \033[44;37;5m | 	-f [ec]                                                        | \033[0m";
+	echo -e "   \033[44;37;5m | 	-f [bios]                                                      | \033[0m";
+	echo -e "   \033[44;37;5m | 	-f [fw] 　(ec+bios)                                            | \033[0m";
+	echo -e "   \033[44;37;5m | 	-f [image] [ip_address]                                        | \033[0m";
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[44;37;5m | -RUN FAFT                                                        | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r [special] [Signle_Item] [ip_address]                                  | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r [special] [Mul_Item] [ip_address]                                  | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r [ec] [ip_address]                                           | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r [bios] [ip_address]                                         | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r [fw] [ip_address]　   (ec+bios)                             | \033[0m";
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
+
 }
 
 
@@ -526,13 +539,13 @@ function display_fun(){
 	declare -i index=0
 # check wheather is in chroot environment
 	check_in_chroot
-	
+# Calculate the number of parameters
 	for a in ${temp[*]}
 	do
 		argu[index]=$a
 		index+=1
 	done
-	
+# display function
 	case ${argu[0]} in
 	"-b")	
 		case "${argu[1]}" in
@@ -597,18 +610,15 @@ function display_fun(){
 		esac
 		;;		
 	"-r")		
-		check_is_servod_run
+		#check_is_servod_run
 		case "${argu[1]}" in
-		"signal")
-			case "${argu[2]}" in
+		"Mul_Items")
+			case "${argu[2]}" in 
 			"")
-					run_signal_fun $DEFAULT_IP 
+				run_MulItems_fun $DEFAULT_IP
 			;;
 			*)
-				tmp_arg=${argu[2]}
-				 
-					
-				run_signal_fun ${argu[2]} ${argu[3]}
+				run_MulItems_fun ${argu[2]}				
 			;;
 			esac
 		;;
@@ -642,6 +652,18 @@ function display_fun(){
 			;;
 			esac
 		;;
+		*)
+			Check_SingleItem ${argu[1]}
+			case "${argu[2]}" in
+			"")		
+				run_SingleItem_fun ${argu[1]} $DEFAULT_IP
+
+			;;
+			*)
+				run_SingleItem_fun ${argu[1]} ${argu[2]}　
+			;;
+			esac
+		;;
 		"")
 			return 0
 		;;
@@ -658,68 +680,24 @@ function display_fun(){
 }
 
 function main(){
+	
 # show help information
-	help_fun $1
+	if [ "$1" == "--help" -o "$1" == "" ];then
+		help_fun $1
+	fi
 #sort and seprate all arguments
 	sort_argu $*
 	separ_argu
 #executive function
 	display_fun ${argu1[*]}
-	display_fun ${argu2[*]}
-	display_fun ${argu3[*]}
-	display_fun ${argu4[*]}
-	display_fun ${argu5[*]}
+	#display_fun ${argu2[*]}
+	#display_fun ${argu3[*]}
+	#display_fun ${argu4[*]}
+	#display_fun ${argu5[*]}
 }
 
 ######  START HERE  ######
 main $*
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
-
-
-
-
-
 
 
 
