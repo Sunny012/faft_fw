@@ -522,8 +522,8 @@ function help_fun ()
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
 	echo -e "   \033[44;37;5m | -RUN FAFT                                                        | \033[0m";
-	echo -e "   \033[44;37;5m | 	-r [special] [Signle_Item] [ip_address]                                  | \033[0m";
-	echo -e "   \033[44;37;5m | 	-r [special] [Mul_Item] [ip_address]                                  | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r [Signle_Item] [ip_address]                                  | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r [Mul_Item] [ip_address]                                     | \033[0m";
 	echo -e "   \033[44;37;5m | 	-r [ec] [ip_address]                                           | \033[0m";
 	echo -e "   \033[44;37;5m | 	-r [bios] [ip_address]                                         | \033[0m";
 	echo -e "   \033[44;37;5m | 	-r [fw] [ip_address]　   (ec+bios)                             | \033[0m";

@@ -1,5 +1,17 @@
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
+@ version: V1.3
+@ auther:  wwz
+@ Time  :  2017/12/11
+********************************************************/
+Fixed problems:
+1.Modified the help information in faft_fw.sh
+
+Modified files:
+1.faft_fw.sh
+
+/********************************************************
+@ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
 @ version: V1.2
 @ auther:  wwz
 @ Time  :  2017/12/9
