@@ -1,3 +1,0 @@
-firmware_ECBootTime
-firmware_ECWriteProtect
-firmware_ECPowerG3

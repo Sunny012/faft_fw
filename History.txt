@@ -1,5 +1,22 @@
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
+@ version: V1.4
+@ auther:  wwz
+@ Time  :  2017/12/11
+********************************************************/
+Fixed problems:
+1.Modified the path to the log store when running fw FAFT test
+2.Added the function which deleted the results when running off fafttest
+3.fixed an issue that can't store result to log files when Special_ItemsLog isn't exist when running Special Items
+4.Put FAFT_LOG folder into faft_fw
+
+Modified files:
+1.faft_fw.sh
+2.FAFT_LOG
+
+
+/********************************************************
+@ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
 @ version: V1.3
 @ auther:  wwz
 @ Time  :  2017/12/11
@@ -9,6 +26,7 @@ Fixed problems:
 
 Modified files:
 1.faft_fw.sh
+
 
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 

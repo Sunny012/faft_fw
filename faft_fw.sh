@@ -1,13 +1,5 @@
 #!/bin/bash
 
-# ver :  v1.0
-# time:  2017/11/06/14:41
-# brief: help build fw files and build environment including hdctool and autotest
-#			  flash fw and image files
-#             run faft 
-#by:     wwz & Adolph Cheng
-
-
 declare -i index=0
 declare -i argu_types_nums=0
 declare -i total_argunums=0
@@ -367,14 +359,41 @@ function get_time_fun(){  #add two following functions
 }
 
 function creat_log_file(){
+	Option=$1
 	get_time_fun
-	file_path=~/trunk/shell_v1/FAFT_LOG
-	if [ ! -d "$file_path/Log_$DATE_YMD"  ];then
-		sudo mkdir -m 777 $file_path/Log_$DATE_YMD;
+	file_path=~/trunk/faft_fw
+	if [ ! -d "$file_path/FAFT_LOG"  ];then
+		sudo mkdir -m 777 $file_path/FAFT_LOG;
 	fi
-	if [ ! -d $file_path/Log_$DATE_YMD/Log_$DATE_HMS ];then
-		sudo mkdir -m 777 $file_path/Log_$DATE_YMD/Log_$DATE_HMS
-	fi 
+	if [ ! -d "$file_path/Log_$DATE_YMD"  ];then
+		sudo mkdir -m 777 -p $file_path/FAFT_LOG/Log_$DATE_YMD
+	fi
+	case $Option in 
+	"fw")
+		if [ ! -d $file_path/FAFT_LOG/Log_$DATE_YMD/FWLog_$DATE_HMS ];then
+			sudo mkdir -m 777 -p $file_path/FAFT_LOG/Log_$DATE_YMD/FWLog_$DATE_HMS
+		fi 
+	;;
+	"ec")
+		if [ ! -d $file_path/FAFT_LOG/Log_$DATE_YMD/ECLog_$DATE_HMS ];then
+			sudo mkdir -m 777 -p $file_path/FAFT_LOG/Log_$DATE_YMD/ECLog_$DATE_HMS
+		fi 
+	;;
+	"bios")
+		if [ ! -d $file_path/FAFT_LOG/Log_$DATE_YMD/BIOSLog_$DATE_HMS ];then
+			sudo mkdir -m 777 v $file_path/FAFT_LOG/Log_$DATE_YMD/BIOSLog_$DATE_HMS
+		fi 
+	;;
+	"special")
+		if [ ! -d $file_path/FAFT_LOG/Log_$DATE_YMD/Special_ItemsLog ];then
+			sudo mkdir -m 777 -p $file_path/FAFT_LOG/Log_$DATE_YMD/Special_ItemsLog
+		fi 
+	;;
+	*)
+		echo -e "\033[41;37;Creat folder parameter input wrong!! \033[0m";
+		exit 1;
+	;;
+	esac
 }
 
 function Check_SingleItem(){
@@ -390,23 +409,39 @@ function Check_SingleItem(){
 function run_MulItems_fun(){
 	IP_Add=$1
 	check_ip $IP_Add
-	log_file_path=~/trunk/shell_v1/FAFT_LOG/Special_MulTests_Log
-	echo "******************************************" >> $log_file_path/Special_MulTests.log
-	date >> $log_file_path/Special_MulTests.log
+	creat_log_file special
+	file_path=~/trunk/faft_fw/FAFT_LOG/Log_$DATE_YMD/Special_ItemsLog
+	if [ ! -f $file_path/Special_Items.log ];then
+		echo "#####　　　　Log File For Mul_Items FaFt-Test　　　　#####" >> $file_path/Special_Items.log
+	fi
+	
+	# check items input file
+	InputFile_path=~/trunk/faft_fw
+	if [ ! -f $InputFile_path/Faft_Special_MulTests_Item.txt ];then
+		echo -e "\033[41;37;5m Input Files doesn't exist,please check it!!! \033[0m";
+		exit 1;
+	fi  
+	if [ ! -s $InputFile_path/Faft_Special_MulTests_Item.txt ];then
+		echo -e "\033[41;37;5m Input File is empty,please input test-items!! \033[0m";
+		exit 1;
+	fi
+	
+	echo "******************************************" >> $file_path/Special_Items.log
+	date >> $file_path/Special_Items.log
 	while read test_item
 	do 
 	if [ "$test_item" != "" ];then
 		/usr/bin/test_that --board=$BOARD $IP_Add $test_item
 		if [ $? -ne 0 ];then
 			print_space
-			echo ""$test_item"  [FAILED]" >> $log_file_path/Special_MulTests.log
+			echo ""$test_item"  [FAILED]" >> $file_path/Special_Items.log
 		else
-			echo ""$test_item"  [SUCCESS]" >> $log_file_path/Special_MulTests.log
+			echo ""$test_item"  [SUCCESS]" >> $file_path/Special_Items.log
 		fi
 	fi			
-	done < ~/trunk/shell_v1/faft_fw/Faft_Special_MulTests_Item.txt
-	echo "******************************************" >> $log_file_path/Special_MulTests.log
-	echo -e "\n" >>  $log_file_path/Special_MulTests.log
+	done < ~/trunk/faft_fw/Faft_Special_MulTests_Item.txt
+	echo "******************************************" >> $file_path/Special_Items.log
+	echo -e "\n" >>  $file_path/Special_Items.log
 	return 0
 }
 
@@ -414,79 +449,115 @@ function run_SingleItem_fun(){
 	Test_Item=$1
 	IP_Add=$2
 	check_ip $IP_Add	
-	log_file_path=~/trunk/shell_v1/FAFT_LOG/Special_MulTests_Log
-	echo "******************************************" >> $log_file_path/Special_MulTests.log
-	date >> $log_file_path/Special_MulTests.log
-	/usr/bin/test_that --board=$BOARD $IP_Add $Test_Item
+	creat_log_file special
+	file_path=~/trunk/faft_fw/FAFT_LOG/Log_$DATE_YMD/Special_ItemsLog
+	if [ ! -f $file_path/Special_Items.log ];then
+		sudo echo "#####　　　　Log File For Special_Items FaFt-Test　　　　#####" >> $file_path/Special_Items.log
+	fi
+	echo "******************************************" >> $file_path/Special_Items.log
+	date >> $file_path/Special_Items.log
+#	/usr/bin/test_that --board=$BOARD $IP_Add $Test_Item
 	if [ $? -ne 0 ];then
 		print_space
-		echo ""$test_item"  [FAILED]" >> $log_file_path/Special_MulTests.log
+		sudo echo ""$test_item"  [FAILED]" >> $file_path/Special_Items.log
 	else
-		echo ""$test_item"  [SUCCESS]" >> $log_file_path/Special_MulTests.log
+		echo ""$test_item"  [SUCCESS]" >> $file_path/Special_Items.log
 	fi		
-	echo "******************************************" >> $log_file_path/Special_MulTests.log
-	echo -e "\n" >>  ~/trunk/faft/log/FaftTest_Item.log
+	echo "******************************************" >> $file_path/Special_Items.log
+	echo -e "\n" >>  $file_path/Special_Items.log
 	return 0
 }
 
 function run_ecfaft_fun(){
 	IP_Add=$1
 	check_ip $IP_Add
-	creat_log_file
-	file_path=~/trunk/shell_v1/FAFT_LOG/Log_$DATE_YMD/Log_$DATE_HMS
+	creat_log_file ec
+	file_path=~/trunk/faft_fw/FAFT_LOG/Log_$DATE_YMD/ECLog_$DATE_HMS
 	/usr/bin/test_that --board=coral $IP_Add suite:faft_ec
 	if [ $? -ne 0 ];then
 		echo -e "\033[41;37;5m ec faft runs failed!! \033[0m";
-		cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/ec.log
+		#Copy result log files to FAFT_LOG folder and deleted latest results
+		cp -r ~/trunk/chroot/tmp/test_that_latest/* $file_path
+		mv $file_path/test_report.log $file_path/ec.log
+		sudo rm -r ~/trunk/chroot/tmp/test_*	
 		exit 1
 	fi	
-	cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/ec.log	
 	echo -e "\033[44;37;5m ec faft runs sucessfully!! \033[0m";
+	#Copy result log files to FAFT_LOG folder and deleted latest results
+	cp -r ~/trunk/chroot/tmp/test_that_latest/* $file_path
+	mv $file_path/test_report.log $file_path/bios.log
+	sudo rm -r ~/trunk/chroot/tmp/test_*	
 	return 0
 }
 
 function run_biosfaft_fun(){
 	IP_Add=$1
 	check_ip $IP_Add
-	creat_log_file
-	file_path=~/trunk/shell_v1/FAFT_LOG/Log_$DATE_YMD/Log_$DATE_HMS
+	creat_log_file bios
+	file_path=~/trunk/faft_fw/FAFT_LOG/Log_$DATE_YMD/BIOSLog_$DATE_HMS
 	/usr/bin/test_that --board=coral $IP_Add suite:faft_bios    
 	if [ $? -ne 0 ];then
-		cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/bios.log
 		echo -e "\033[41;37;5m bios faft runs failed!! \033[0m";
+		#Copy result log files to FAFT_LOG folder and deleted latest results
+		cp -r ~/trunk/chroot/tmp/test_that_latest/* $file_path
+		mv $file_path/test_report.log $file_path/bios.log
+		sudo rm -r ~/trunk/chroot/tmp/test_*	
 		exit 1
 	fi		
-	cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/bios.log
-	echo $?
 	echo -e "\033[44;37;5m bios faft runs sucessfully!! \033[0m";
+	#Copy result log files to FAFT_LOG folder and deleted latest results
+	cp -r ~/trunk/chroot/tmp/test_that_latest/* $file_path
+	mv $file_path/test_report.log $file_path/bios.log
+	sudo rm -r ~/trunk/chroot/tmp/test_*	
 	return 0
 }
 
 function run_allfaft_fun(){
 	IP_Add=$1
 	check_ip $IP_Add
-	creat_log_file
-	file_path=~/trunk/shell_v1/FAFT_LOG/Log_$DATE_YMD/Log_$DATE_HMS
-	#run all ec faft-test part#
+	creat_log_file fw
+	file_path=~/trunk/faft_fw/FAFT_LOG/Log_$DATE_YMD/FWLog_$DATE_HMS
+
+#run all ec faft-test part#
+	if [ ! -d  $file_path/EC_Log ];then
+		sudo mkdir -m 777 -p $file_path/EC_Log
+	fi
 	/usr/bin/test_that --board=coral $IP_Add suite:faft_ec
 	if [ $? -ne 0 ];then
 		echo -e "\033[41;37;5m ec faft runs failed!! \033[0m";
-		cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/ec.log
+		#Copy result log files to FAFT_LOG folder and deleted latest results
+		cp -r ~/trunk/chroot/tmp/test_that_latest/* $file_path/EC_Log
+		mv $file_path/test_report.log $file_path/EC_Log/ec.log
+		sudo rm -r ~/trunk/chroot/tmp/test_*	
 		exit 1
 	fi	
-	cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/ec.log	
 	echo -e "\033[44;37;5m ec faft runs sucessfully!! \033[0m";
+	#Copy result log files to FAFT_LOG folder and deleted latest results
+	cp -r ~/trunk/chroot/tmp/test_that_latest/* $file_path/EC_Log
+	mv $file_path/EC_Log/test_report.log $file_path/EC_Log/ec.log
+	sudo rm -r ~/trunk/chroot/tmp/test_*	
+	echo "$file_path"
 	
-	#run all bios faft-test part#
+ #run all bios faft-test part#
+	if [ ! -d  $file_path/BIOS_Log ];then
+		echo "111111"
+		sudo mkdir -m 777 -p $file_path/BIOS_Log
+	fi
 	/usr/bin/test_that --board=coral $IP_Add suite:faft_bios    
 	if [ $? -ne 0 ];then
-		cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/bios.log
 		echo -e "\033[41;37;5m bios faft runs failed!! \033[0m";
+		#Copy result log files to FAFT_LOG folder and deleted latest results
+		cp -r ~/trunk/chroot/tmp/test_that_latest/* $file_path/BIOS_Log
+		mv $file_path/test_report.log $file_path/BIOS_Log/bios.log
+		sudo rm -r ~/trunk/chroot/tmp/test_*	
 		exit 1
 	fi		
-	cp ~/trunk/chroot/tmp/test_that_latest/test_report.log $file_path/bios.log
 	echo -e "\033[44;37;5m bios faft runs sucessfully!! \033[0m";	
-	return 0
+	#Copy result log files to FAFT_LOG folder and deleted latest results
+	cp -r ~/trunk/chroot/tmp/test_that_latest/* $file_path/BIOS_Log
+	mv $file_path/BIOS_Log/test_report.log $file_path/BIOS_Log/bios.log
+	sudo rm -r ~/trunk/chroot/tmp/test_*	
+	return 0 
 }
 
 ############################################################
@@ -612,16 +683,6 @@ function display_fun(){
 	"-r")		
 		#check_is_servod_run
 		case "${argu[1]}" in
-		"Mul_Items")
-			case "${argu[2]}" in 
-			"")
-				run_MulItems_fun $DEFAULT_IP
-			;;
-			*)
-				run_MulItems_fun ${argu[2]}				
-			;;
-			esac
-		;;
 		"ec")
 			case "${argu[2]}" in
 			"")
@@ -649,6 +710,16 @@ function display_fun(){
 			;;
 			*)
 				run_allfaft_fun ${argu[2]}
+			;;
+			esac
+		;;
+		"Mul_Items")
+			case "${argu[2]}" in 
+			"")
+				run_MulItems_fun $DEFAULT_IP
+			;;
+			*)
+				run_MulItems_fun ${argu[2]}				
 			;;
 			esac
 		;;
@@ -690,10 +761,10 @@ function main(){
 	separ_argu
 #executive function
 	display_fun ${argu1[*]}
-	#display_fun ${argu2[*]}
-	#display_fun ${argu3[*]}
-	#display_fun ${argu4[*]}
-	#display_fun ${argu5[*]}
+	display_fun ${argu2[*]}
+	display_fun ${argu3[*]}
+	display_fun ${argu4[*]}
+	display_fun ${argu5[*]}
 }
 
 ######  START HERE  ######
