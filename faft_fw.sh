@@ -19,7 +19,8 @@ declare -a argu5
 
 # declare default board and ip
 BOARD=coral
-DEFAULT_IP=192.168.1.123
+DEFAULT_IP=192.168.1.121
+
 ############################################################
 #                                                          #  
 #    Sort the Input parameters                             #
@@ -30,6 +31,11 @@ DEFAULT_IP=192.168.1.123
 
 #get and sort out all of arguments
 function sort_argu(){
+
+	if [ "$1" != "-b" -a "$1" != "-f" -a "$1" != "-r" ];then
+		echo -e "\033[41;37;5m Input Wrong! Please check it!!\033[0m";
+		exit 1
+	fi
 	total_argunums=$#
 	for arg in $@
 	do
@@ -314,16 +320,18 @@ function flash_image_fun(){
 	check_ip $IP_Add
 	os_image_filepath=~/trunk/image/chromiumos_test_image.bin
 	if [ ! -f $os_image_filepath ]; then
-    	echo "the test image file is not exist!!"
+    	echo -e "\033[41;37;5m the test image file is not exist!! \033[0m"
    		exit 1
  	fi
 	ping -c 2 $IP_Add
- 	while [ $? -ne 0 ]
+	ping_result=$?
+ 	while [ $ping_result -ne 0 ]
 	do
    		ping -c 2 $IP_Add
-		timeout+=1
-   		if [ timeout -gt 50 ];then
-			echo -e "\033[44;37;5m Connected failed!Please retry! \033[0m"
+   		ping_result=$?
+		timeout=$[timeout+1]
+   		if [ $timeout -gt 50 ];then
+			echo -e "\033[41;37;5m Connected failed!Please retry! \033[0m"
 			exit 1;   			
    		fi
 	done
@@ -355,7 +363,7 @@ function print_space(){
 
 function get_time_fun(){  #add two following functions
 	DATE_YMD=`date +%y%m%d`
-	DATE_HMS=`date +%H%M%S`
+	DATE_HMS=`date +%-H%M%S`
 }
 
 function creat_log_file(){
@@ -400,7 +408,7 @@ function Check_SingleItem(){
 	Special_SignleItem=$1;
 	echo $Special_SignleItem | grep "^firmware_" > /dev/null 
 	if [ $? -ne 0 ];then
-		echo -e "\033[41;37;5m Signle Item Input wrong!! \033[0m";
+		echo -e "\033[41;37;5m Signle Item Input wrong,please check it!! \033[0m";
 		exit 1;
 	fi
 	return 0
@@ -418,7 +426,7 @@ function run_MulItems_fun(){
 	# check items input file
 	InputFile_path=~/trunk/faft_fw
 	if [ ! -f $InputFile_path/Faft_Special_MulTests_Item.txt ];then
-		echo -e "\033[41;37;5m Input Files doesn't exist,please check it!!! \033[0m";
+		echo -e "\033[41;37;5m [Faft_Special_MulTests_Item.txt] doesn't exist,please creat it!!! \033[0m";
 		exit 1;
 	fi  
 	if [ ! -s $InputFile_path/Faft_Special_MulTests_Item.txt ];then
@@ -456,7 +464,7 @@ function run_SingleItem_fun(){
 	fi
 	echo "******************************************" >> $file_path/Special_Items.log
 	date >> $file_path/Special_Items.log
-#	/usr/bin/test_that --board=$BOARD $IP_Add $Test_Item
+	/usr/bin/test_that --board=$BOARD $IP_Add $Test_Item
 	if [ $? -ne 0 ];then
 		print_space
 		sudo echo ""$test_item"  [FAILED]" >> $file_path/Special_Items.log
@@ -485,7 +493,7 @@ function run_ecfaft_fun(){
 	echo -e "\033[44;37;5m ec faft runs sucessfully!! \033[0m";
 	#Copy result log files to FAFT_LOG folder and deleted latest results
 	cp -r ~/trunk/chroot/tmp/test_that_latest/* $file_path
-	mv $file_path/test_report.log $file_path/bios.log
+	mv $file_path/test_report.log $file_path/ec.log
 	sudo rm -r ~/trunk/chroot/tmp/test_*	
 	return 0
 }
@@ -578,6 +586,12 @@ function help_fun ()
 	echo -e "   \033[44;37;5m |-ress;and please pay attention the order of comand!               | \033[0m";
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";		
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[44;37;5m | -HELP                                                            | \033[0m";
+	echo -e "   \033[44;37;5m | 	--help                                                         | \033[0m";
+	echo -e "   \033[44;37;5m | 	--EC_FaftItems                                                 | \033[0m";
+	echo -e "   \033[44;37;5m | 	--BIOS_FaftItems                                               | \033[0m";	
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";		
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
 	echo -e "   \033[44;37;5m | -BUILD FILE                                                      | \033[0m";
 	echo -e "   \033[44;37;5m | 	-b fw                                                          | \033[0m";
 	echo -e "   \033[44;37;5m | 	-b env                                                         | \033[0m";
@@ -586,23 +600,51 @@ function help_fun ()
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
 	echo -e "   \033[44;37;5m | -FLASH FILE                                                      | \033[0m";
-	echo -e "   \033[44;37;5m | 	-f [ec]                                                        | \033[0m";
-	echo -e "   \033[44;37;5m | 	-f [bios]                                                      | \033[0m";
-	echo -e "   \033[44;37;5m | 	-f [fw] 　(ec+bios)                                            | \033[0m";
-	echo -e "   \033[44;37;5m | 	-f [image] [ip_address]                                        | \033[0m";
+	echo -e "   \033[44;37;5m | 	-f ec                                                          | \033[0m";
+	echo -e "   \033[44;37;5m | 	-f bios                                                        | \033[0m";
+	echo -e "   \033[44;37;5m | 	-f fw 　(ec+bios)                                              | \033[0m";
+	echo -e "   \033[44;37;5m | 	-f image [ip_address]                                          | \033[0m";
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
 	echo -e "   \033[44;37;5m | -RUN FAFT                                                        | \033[0m";
-	echo -e "   \033[44;37;5m | 	-r [Signle_Item] [ip_address]                                  | \033[0m";
-	echo -e "   \033[44;37;5m | 	-r [Mul_Item] [ip_address]                                     | \033[0m";
-	echo -e "   \033[44;37;5m | 	-r [ec] [ip_address]                                           | \033[0m";
-	echo -e "   \033[44;37;5m | 	-r [bios] [ip_address]                                         | \033[0m";
-	echo -e "   \033[44;37;5m | 	-r [fw] [ip_address]　   (ec+bios)                             | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r firmware_…… [ip_address]                                    | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r Mul_Items [ip_address]                                      | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r ec [ip_address]                                             | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r bios [ip_address]                                           | \033[0m";
+	echo -e "   \033[44;37;5m | 	-r fw　[ip_address]　    (ec+bios)                             | \033[0m";
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
-
 }
 
+function Help_EC_FaftItems(){
+	echo -e "   \033[0;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[0;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[0;37;5m +                     EC Single Itmes List                         + \033[0m";
+	echo -e "   \033[0;37;5m +------------------------------------------------------------------+ \033[0m";
+	while read ec_item
+	do 
+		if [ "$ec_item" != "" ];then
+			echo -e "   \033[0;37;5m | 	$ec_item                                                     \033[0m";		
+		fi	
+	done < ~/trunk/faft_fw/FW_FaftItmes/ec_single_list.txt
+	echo -e "   \033[0;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[0;37;5m +------------------------------------------------------------------+ \033[0m";
+}
+
+function Help_BIOS_FaftItems(){
+	echo -e "   \033[0;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[0;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[0;37;5m +                     BIOS Single Itmes List                         + \033[0m";
+	echo -e "   \033[0;37;5m +------------------------------------------------------------------+ \033[0m";
+	while read ec_item
+	do 
+		if [ "$ec_item" != "" ];then
+			echo -e "   \033[0;37;5m | 	$ec_item                                                     \033[0m";		
+		fi	
+	done < ~/trunk/faft_fw/FW_FaftItmes/bios_single_list.txt
+	echo -e "   \033[0;37;5m +------------------------------------------------------------------+ \033[0m";
+	echo -e "   \033[0;37;5m +------------------------------------------------------------------+ \033[0m";
+}
 
 function display_fun(){	
 	temp=$*
@@ -634,9 +676,11 @@ function display_fun(){
 			~/trunk/src/scripts/build_packages --board=$BOARD
 		;;
 		"")
+			echo -e "\033[41;37;5m Please input option paramenter \033[0m";
+			exit 1;
 		;;
 		*)
-			echo "input is wrong ,please retry it"
+			echo -e "\033[41;37;5m Input wrong,please check it! \033[0m";
 			exit 1
 		;;
 		esac
@@ -678,10 +722,18 @@ function display_fun(){
 			;;
 			esac
 		;;
+		"")
+			echo -e "\033[41;37;5m Please input option paramenter \033[0m";
+			exit 1;
+		;;
+		*)
+			echo -e "\033[41;37;5m Input wrong,please check it! \033[0m";
+			exit 1
+		;;
 		esac
 		;;		
 	"-r")		
-		#check_is_servod_run
+		check_is_servod_run
 		case "${argu[1]}" in
 		"ec")
 			case "${argu[2]}" in
@@ -723,30 +775,25 @@ function display_fun(){
 			;;
 			esac
 		;;
+
+		"")
+			echo -e "\033[41;37;5m Please input option paramenter \033[0m";
+			exit 1;
+		;;
 		*)
 			Check_SingleItem ${argu[1]}
 			case "${argu[2]}" in
-			"")		
-				run_SingleItem_fun ${argu[1]} $DEFAULT_IP
+			"")	
+				run_SingleItem_fun ${argu[1]} $DEFAULT_IP  
 
 			;;
 			*)
-				run_SingleItem_fun ${argu[1]} ${argu[2]}　
+				run_SingleItem_fun ${argu[1]} ${argu[2]}
 			;;
 			esac
 		;;
-		"")
-			return 0
-		;;
-		*)
-			echo "input is wrong ,please retry it"
-			exit 1
-		;;
 		esac
 	;;
-	"")
-		return 0
-	;;	
 	esac
 }
 
@@ -754,7 +801,16 @@ function main(){
 	
 # show help information
 	if [ "$1" == "--help" -o "$1" == "" ];then
-		help_fun $1
+		help_fun
+		return 0 
+	fi
+	if [ "$1" == "EC_FaftItems" ];then
+		Help_EC_FaftItems
+		return 0
+	fi
+	if [ "$1" == "BIOS_FaftItems" ];then
+		Help_BIOS_FaftItems
+		return 0
 	fi
 #sort and seprate all arguments
 	sort_argu $*

@@ -1,5 +1,34 @@
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
+@ version: V1.6
+@ auther:  wwz
+@ Time  :  2017/12/15
+********************************************************/
+Fixed problems:
+1.Fixed the issue that will creat bios.log when run off ec faft test!
+
+
+/********************************************************
+@ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
+@ version: V1.5
+@ auther:  wwz
+@ Time  :  2017/12/13
+********************************************************/
+Fixed problems:
+1.Add a function that can list all BIOS or EC faft single itesm!
+2.Improve the information that "--help" command provided 
+3.Put LICENSE information into README.md file and deleted LICENSE file
+
+Modified files:
+1.faft_fw.sh
+Add files
+1.FW_FaftItmes/bios_single_list.txt
+2.FW_FaftItmes/ec_single_list.txt
+Deleted file:
+LICENSE
+
+/********************************************************
+@ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
 @ version: V1.4
 @ auther:  wwz
 @ Time  :  2017/12/11
