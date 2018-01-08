@@ -804,11 +804,11 @@ function main(){
 		help_fun
 		return 0 
 	fi
-	if [ "$1" == "EC_FaftItems" ];then
+	if [ "$1" == "--EC_FaftItems" ];then
 		Help_EC_FaftItems
 		return 0
 	fi
-	if [ "$1" == "BIOS_FaftItems" ];then
+	if [ "$1" == "--BIOS_FaftItems" ];then
 		Help_BIOS_FaftItems
 		return 0
 	fi

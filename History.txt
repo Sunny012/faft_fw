@@ -1,5 +1,16 @@
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
+@ version: V1.7
+@ auther:  wwz & Aldoph Cheng
+@ Time  :  2018/01/04
+********************************************************/
+Fixed problems:
+1.changed the help-command and and add the auther's information!
+
+---------------------------------------------------------------------------------------------
+
+/********************************************************
+@ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
 @ version: V1.6
 @ auther:  wwz
 @ Time  :  2017/12/15
@@ -7,6 +18,7 @@
 Fixed problems:
 1.Fixed the issue that will creat bios.log when run off ec faft test!
 
+---------------------------------------------------------------------------------------------
 
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
@@ -27,6 +39,8 @@ Add files
 Deleted file:
 LICENSE
 
+---------------------------------------------------------------------------------------------
+
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
 @ version: V1.4
@@ -43,6 +57,7 @@ Modified files:
 1.faft_fw.sh
 2.FAFT_LOG
 
+---------------------------------------------------------------------------------------------
 
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
@@ -56,6 +71,7 @@ Fixed problems:
 Modified files:
 1.faft_fw.sh
 
+---------------------------------------------------------------------------------------------
 
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
@@ -69,6 +85,7 @@ Fixed problems:
 Modified files:
 1.faft_fw.sh
 
+---------------------------------------------------------------------------------------------
 
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
@@ -82,4 +99,5 @@ Fixed problems:
 Modified files:
 1.faft_fw.sh
 
+---------------------------------------------------------------------------------------------
 

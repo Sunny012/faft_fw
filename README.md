@@ -25,7 +25,7 @@ The first script from wwz which can help some users to resolve the problem of  b
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
 @ version: V1.0
-@ auther:  wwz
+@ auther:  wwz & Aldoph Cheng
 @ Time  :  2017/11/1
 ********************************************************/
 
