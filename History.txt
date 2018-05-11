@@ -1,3 +1,11 @@
+@ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
+@ version: V1.8
+@ auther:  wwz & Aldoph Cheng
+@ Time  :  2018/05/11
+********************************************************/
+Fixed problems:
+1.Refind some functions like 'build' etc,and add the function that 'move function'.
+
 /********************************************************
 @ brief:   Help users to flash fw&image, build code&environment and run FAFT test! 
 @ version: V1.7
