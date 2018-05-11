@@ -32,14 +32,14 @@ DEFAULT_IP=192.168.1.121
 #get and sort out all of arguments
 function sort_argu(){
 
-	if [ "$1" != "-b" -a "$1" != "-f" -a "$1" != "-r" ];then
+	if [ "$1" != "-b" -a "$1" != "-f" -a "$1" != "-r" -a "$1" != "-m" ];then
 		echo -e "\033[41;37;5m Input Wrong! Please check it!!\033[0m";
 		exit 1
 	fi
 	total_argunums=$#
 	for arg in $@
 	do
-		if [ "$arg" == "-b" -o "$arg" == "-f" -o "$arg" == "-r" ];then	
+		if [ "$arg" == "-b" -o "$arg" == "-f" -o "$arg" == "-r" -o "$arg" == "-m" ];then	
 			nums_flag[argu_types_nums]=$index;
 			argu_types_nums+=1;
 		fi
@@ -180,37 +180,92 @@ function clear_buildfile()
 }
 
 # move bios&ec file
-function mv_file_fun(){
+function mv_bios(){
     file_path=~/trunk/chroot/build/$BOARD/firmware
     if [ ! -d $file_path ];then
-        echo -e "\033[41;37;5m bios or ec's path doesn't exist!!! \033[0m";
+        echo -e "\033[41;37;5m bios path doesn't exist!!! \033[0m";
         exit 1;
     fi
-# start copy bios&ec file
-    cp $file_path/image-coral.bin ~/trunk/firmware/$BOARD
-    mv_flag_bios=$?
-    cp $file_path/robo360/ec.bin  ~/trunk/firmware/$BOARD
-    mv_flag_ec=$?
-
-    if [ $mv_flag_bios -ne 0 -o $mv_flag_ec -ne 0 ];then
-        echo -e "\033[41;37;5m move failed,please retry!! \033[0m";
+    if [ ! -d ~/trunk/firmware/$BOARD ];then
+    	mkdir -p ~/trunk/firmware/$BOARD
+    fi    
+    cp $file_path/image-coral.serial.bin ~/trunk/firmware/$BOARD
+    if [ $? -ne 0 ];then
+        echo -e "\033[41;37;5m move bios failed,please retry!! \033[0m";
         exit 1;
     fi
-    if [ ! -f ~/trunk/firmware/$BOARD/image-coral.bin ];then
-        echo -e "\033[41;37;5m bios.bin doesn't exist \033[0m";
-        exit 1;
-    fi
-    mv ~/trunk/firmware/$BOARD/image-coral.bin ~/trunk/firmware/$BOARD/bios.bin 
+    mv ~/trunk/firmware/$BOARD/image-coral.serial.bin ~/trunk/firmware/$BOARD/bios.bin
     if [ $? -ne 0  ];then
-        echo -e "\033[41;37;5m bios and ec mv faily!!! \033[0m";s
+        echo -e "\033[41;37;5m bios mv faily!!! \033[0m";
         exit 1
     else
-        echo -e "\033[44;37;5m bios and ec mv sucessfully!! \033[0m";
+        echo -e "\033[44;37;5m bios mv sucessfully!! \033[0m";
     fi
-	return 0
+    return 0;
+}
+
+function mv_ec(){
+    file_path=~/trunk/chroot/build/$BOARD/firmware
+    if [ ! -d $file_path ];then
+        echo -e "\033[41;37;5m ec's path doesn't exist!!! \033[0m";
+        exit 1;
+    fi
+# start copy ec file
+    cp $file_path/robo360/ec.bin  ~/trunk/firmware/$BOARD
+    mv_flag_ec=$?
+    if [ $mv_flag_ec -ne 0 ];then
+        echo -e "\033[41;37;5m move ec failed,please retry!! \033[0m";
+        exit 1;
+    fi
+    if [ ! -f ~/trunk/firmware/$BOARD/ec.bin ];then
+        echo -e "\033[41;37;5m ec.bin doesn't exist \033[0m";
+        exit 1;
+    fi
+    return 0;
+}
+function mv_file_fun(){
+    mv_bios
+    mv_ec
+}
+
+# build mrc function
+function build_mrc()
+{
+# clear build files in local    
+    clear_buildfile
+# build mrc
+    emerge-$BOARD chromeos-mrc --getbinpkg --binpkg-respect-use=n
 }
 
 # build local bios and ec code
+function build_bios(){
+# clear build_files in local
+    clear_buildfile
+# build mrc first
+    emerge-$BOARD chromeos-mrc --getbinpkg --binpkg-respect-use=n
+
+# build the need files
+    emerge-$BOARD coreboot-private-files
+    emerge-$BOARD coreboot-private-files-baseboard-coral
+    emerge-$BOARD nhlt-blobs
+
+# start that we need build
+    cros_workon-$BOARD start libpayload depthcharge coreboot 
+#    start building....
+    emerge-$BOARD chromeos-ec chromeos-seabios libpayload depthcharge coreboot chromeos-bootimage
+#stop all
+    cros_workon-$BOARD --all stop 
+    return 0;
+}
+
+function build_ec(){
+# clear_buildfile in local
+    clear_buildfile
+    cros_workon-$BOARD start chromeos-ec
+    emerge-$BOARD chromeos-ec
+    cros_workon-$BOARD stop chromeos-ec
+}
+
 function build_fw_fun()
 {
 # clear build_files in local
@@ -231,32 +286,38 @@ function build_fw_fun()
     emerge-$BOARD chromeos-firmware-ps8751 chromeos-firmware-anx3429 chromeos-ec chromeos-seabios libpayload depthcharge coreboot chromeos-bootimage
 # stop all
     cros_workon-$BOARD --all stop 
-    mv_file_fun
     return 0;
 }
 
 # build environment
-function build_env_fun(){
+function build_hdctool(){
 # build hdctools
-	cros_workon --host start hdctools
-	sudo emerge hdctools
-	if [ $? -ne 0 ];then
-		echo "\033[41;37;5m build hdctools failed!! \033[0m"
-		exit 1;
-	fi 
-	echo -e "\033[44;37;5m build hdctools successfully!! \033[0m"
-	cros_workon --host stop hdctools
+    cros_workon --host start hdctools
+    sudo emerge hdctools
+    if [ $? -ne 0 ];then
+       echo "\033[41;37;5m build hdctools failed!! \033[0m"
+    exit 1;
+    fi 
+    echo -e "\033[44;37;5m build hdctools successfully!! \033[0m"
+    cros_workon --host stop hdctools
+    return 0;
+}
 
+function build_autotest(){
 # build autotest
-	cros_workon-$BOARD start autotest-chrome autotest-deps autotest-tests autotest
-	emerge-$BOARD autotest-chrome autotest-deps autotest-tests autotest 
-	cros_workon-$BOARD stop autotest-chrome autotest-deps autotest-tests autotest
-	if [ $? -ne 0 ];then
-		echo "\033[41;37;5m build autotest failed!! \033[0m"
-		exit 1;
-	fi 
-	echo -e "\033[44;37;5m build autotest successfully!! \033[0m"
-	return 0
+    cros_workon-$BOARD start autotest-chrome autotest-deps autotest-tests autotest
+    emerge-$BOARD autotest-chrome autotest-deps autotest-tests autotest
+    cros_workon-$BOARD stop autotest-chrome autotest-deps autotest-tests autotest
+    if [ $? -ne 0 ];then
+        echo "\033[41;37;5m build autotest failed!! \033[0m"
+        exit 1;
+    fi
+    echo -e "\033[44;37;5m build autotest successfully!! \033[0m"
+    return 0
+}
+function build_env_fun(){
+    build_hdctool;
+    build_autotest;
 }
 
 # build packages
@@ -591,11 +652,20 @@ function help_fun ()
 	echo -e "   \033[44;37;5m | 	--EC_FaftItems                                                 | \033[0m";
 	echo -e "   \033[44;37;5m | 	--BIOS_FaftItems                                               | \033[0m";	
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";		
+	echo -e "   \033[44;37;5m | -MOV                                                               | \033[0m";
+	echo -e "   \033[44;37;5m | 	-m bios                                                         | \033[0m";
+	echo -e "   \033[44;37;5m | 	-m ec                                                        | \033[0m";
+	echo -e "   \033[44;37;5m | 	-m fw                                                       | \033[0m";
+	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";		
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
 	echo -e "   \033[44;37;5m | -BUILD FILE                                                      | \033[0m";
-	echo -e "   \033[44;37;5m | 	-b fw                                                          | \033[0m";
-	echo -e "   \033[44;37;5m | 	-b env                                                         | \033[0m";
-	echo -e "   \033[44;37;5m | 	-b all　　　(fw+env)                                           | \033[0m";
+	echo -e "   \033[44;37;5m |     -b mrc                                                       | \033[0m";
+	echo -e "   \033[44;37;5m | 	-b bios                                                        | \033[0m";
+	echo -e "   \033[44;37;5m | 	-b ec                                                        | \033[0m";
+    echo -e "   \033[44;37;5m | 	-b fw(bios+ec)                                                       | \033[0m";
+    echo -e "   \033[44;37;5m | 	-b hdctool                                                        | \033[0m";
+	echo -e "   \033[44;37;5m | 	-b autotest                                                       | \033[0m";
+    echo -e "   \033[44;37;5m | 	-b env (hdctool+autotest                                           | \033[0m";
 	echo -e "   \033[44;37;5m | 	-b packages                                                    | \033[0m";
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
 	echo -e "   \033[44;37;5m +------------------------------------------------------------------+ \033[0m";
@@ -660,17 +730,28 @@ function display_fun(){
 	done
 # display function
 	case ${argu[0]} in
-	"-b")	
+	"-b")
 		case "${argu[1]}" in
+        "mrc")
+            build_mrc
+        ;;    
+        "bios")
+            build_bios
+        ;;
+        "ec")
+            build_ec
+        ;;
 		"fw")
 			build_fw_fun
 		;;
+        "hdctool")
+            build_hdctool
+        ;;
+        "autotest")
+            build_autotest
+        ;;
 		"env")
-			build_env_fun				
-		;;
-		"all")
 			build_env_fun
-			build_fw_fun
 		;;
 		"packages")
 			~/trunk/src/scripts/build_packages --board=$BOARD
@@ -684,7 +765,21 @@ function display_fun(){
 			exit 1
 		;;
 		esac
-	;;
+        ;;
+    "-m")
+		check_is_servod_run
+		case "${argu[1]}" in
+        "bios")
+            mv_bios
+        ;;
+        "ec")
+            mv_ec
+        ;;
+        "*")
+			echo -e "\033[41;37;5m Input wrong,please check it! \033[0m";
+            exit 1;
+        esac
+        ;;
 	"-f")
 		check_is_servod_run
 		case "${argu[1]}" in
@@ -692,7 +787,7 @@ function display_fun(){
 			flash_ec_fun
 		;;
 		"bios")
-			flash_bios_fun 								
+			flash_bios_fun
 		;;
 		"fw")
 			flash_ec_fun
@@ -794,7 +889,7 @@ function display_fun(){
 		;;
 		esac
 	;;
-	esac
+    esac
 }
 
 function main(){
