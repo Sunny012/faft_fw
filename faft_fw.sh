@@ -18,7 +18,7 @@ declare -a argu4
 declare -a argu5
 
 # declare default board and ip
-BOARD=coral
+BOARD=octopus
 DEFAULT_IP=192.168.1.121
 
 ############################################################
@@ -117,19 +117,27 @@ function check_in_chroot()
 {
 	filepath=~/trunk/src/scripts/
     	if [ ! -d "$filepath" ]; then
-        echo -e "\033[41;37;5m Please enter the emvironment first! using 'cros_sdk --no-ns-pid' to do it! \033[0m";
-    	exit 1;
-  	fi
+            echo -e "\033[41;37;5m Please enter the emvironment first! using 'cros_sdk --no-ns-pid' to do it! \033[0m";
+    	    exit 1;
+  	    fi
 	return 0
 }
 
 # check servod is run
 function check_is_servod_run()
 {
-	ps -fe |grep servod | grep -v grep
+    ps -fe |grep servod | grep -v grep
     if [ $? -ne 0 ]; then
-		sudo pkill servod -x $BOARD
-  		sudo servod -b $BOARD &
+        case $BOARD in
+            "coral")
+		        sudo pkill servod -x $BOARD
+          		sudo servod -b $BOARD &
+            ;;
+            "octopus")
+                #sudo pkill servod -x $BOARD
+                sudo servod -b "$BOARD_npcx" &
+            ;;
+        esac
     	sleep 3
     fi
 	echo -e "\033[44;37;5m servod is running ...\033[0m"
@@ -150,7 +158,7 @@ function check_ip(){
     for num in $a $b $c $d
     do 
    		if [ $num -gt 255 ];then 
-      		echo -e "\033[41;37;5m the dut_IP is incorrect! \033[0m";
+      		echo -e "\033[44;37;5m the dut_IP is incorrect! \033[0m";
 	   		exit 1
     	fi 
     done 
@@ -170,11 +178,11 @@ function check_ip(){
 # clear the build directory and files
 function clear_buildfile()
 {
-    if [ -d ~/trunk/chroot/build/coral/firmware ]; then
-        cd ~/trunk/chroot/build/coral/firmware
+    if [ -d ~/trunk/chroot/build/$BOARD/firmware ]; then
+        cd ~/trunk/chroot/build/$BOARD/firmware
         shopt -s extglob
         sudo rm -rf *
-        #sudo rm -rf !(coreboot-private)
+    	echo -e "\033[44;37;5m the old file has been deleted! \033[0m";
     fi
     return 0
 }
@@ -189,12 +197,21 @@ function mv_bios(){
     if [ ! -d ~/trunk/firmware/$BOARD ];then
     	mkdir -p ~/trunk/firmware/$BOARD
     fi    
-    cp $file_path/image-coral.serial.bin ~/trunk/firmware/$BOARD
+    case $BOARD in 
+        "octopus")
+            file_name=image-phaser.serial.bin
+            cp $file_path/$file_name ~/trunk/firmware/$BOARD
+        ;;
+        "*")
+            file_name=image-$BOARD.serial.bin
+            cp $file_path/$file_name ~/trunk/firmware/$BOARD
+        ;;
+    esac
     if [ $? -ne 0 ];then
         echo -e "\033[41;37;5m move bios failed,please retry!! \033[0m";
         exit 1;
     fi
-    mv ~/trunk/firmware/$BOARD/image-coral.serial.bin ~/trunk/firmware/$BOARD/bios.bin
+    mv ~/trunk/firmware/$BOARD/$file_name ~/trunk/firmware/$BOARD/bios.bin
     if [ $? -ne 0  ];then
         echo -e "\033[41;37;5m bios mv faily!!! \033[0m";
         exit 1
@@ -231,36 +248,52 @@ function mv_file_fun(){
 # build mrc function
 function build_mrc()
 {
-# clear build files in local    
-    clear_buildfile
-# build mrc
-    emerge-$BOARD chromeos-mrc --getbinpkg --binpkg-respect-use=n
+    case $BOARD in
+        "coral")
+        # clear build files in local    
+            clear_buildfile
+        # build mrc
+            emerge-$BOARD chromeos-mrc --getbinpkg --binpkg-respect-use=n
+        ;;
+        "*")
+            echo -e "\033[41;37;5m The Boaid id input isn't supporting by this script!! \033[0m";
+        ;;
+    esac
 }
 
 # build local bios and ec code
 function build_bios(){
-# clear build_files in local
-    clear_buildfile
-# build mrc first
-    emerge-$BOARD chromeos-mrc --getbinpkg --binpkg-respect-use=n
-
-# build the need files
-    emerge-$BOARD coreboot-private-files
-    emerge-$BOARD coreboot-private-files-baseboard-coral
-    emerge-$BOARD nhlt-blobs
-
-# start that we need build
-    cros_workon-$BOARD start libpayload depthcharge coreboot 
-#    start building....
-    emerge-$BOARD chromeos-ec chromeos-seabios libpayload depthcharge coreboot chromeos-bootimage
-#stop all
-    cros_workon-$BOARD --all stop 
-    return 0;
+# clear build_files in locala
+    #clear_buildfile
+    case $BOARD in
+        "coral")
+        # build mrc first
+            emerge-$BOARD chromeos-mrc --getbinpkg --binpkg-respect-use=n
+        # workon board
+            cros_workon-$BOARD start libpayload depthcharge coreboot 
+        # start building....
+            emerge-$BOARD chromeos-ec chromeos-seabios libpayload depthcharge coreboot chromeos-bootimage
+        # stop all
+            cros_workon-$BOARD --all stop 
+        ;;
+        "octopus")
+        # workon board
+            cros_workon-$BOARD start coreboot 
+        # start building....
+            emerge-$BOARD coreboot chromeos-bootimage
+        # stop all
+            cros_workon-$BOARD --all stop 
+        ;;
+        "*")
+            echo -e "\033[41;37;5m The Boaid id input isn't supporting by this script!! \033[0m";
+        ;;
+    esac 
 }
 
 function build_ec(){
 # clear_buildfile in local
-    clear_buildfile
+    #clear_buildfile
+# start to build ec
     cros_workon-$BOARD start chromeos-ec
     emerge-$BOARD chromeos-ec
     cros_workon-$BOARD stop chromeos-ec
@@ -269,23 +302,34 @@ function build_ec(){
 function build_fw_fun()
 {
 # clear build_files in local
-	clear_buildfile
-# build mrc first
-    emerge-$BOARD chromeos-mrc --getbinpkg --binpkg-respect-use=n
-
-# build the need files
-    emerge-$BOARD coreboot-private-files
-    emerge-$BOARD coreboot-private-files-baseboard-coral
-    emerge-$BOARD nhlt-blobs
-
-# start that we need build
-    cros_workon-$BOARD start chromeos-ec libpayload depthcharge coreboot 
-
-
-# start building....
-    emerge-$BOARD chromeos-firmware-ps8751 chromeos-firmware-anx3429 chromeos-ec chromeos-seabios libpayload depthcharge coreboot chromeos-bootimage
-# stop all
-    cros_workon-$BOARD --all stop 
+    case $BOARD in
+        "coral")
+        clear_buildfile
+        # build mrc first
+            emerge-$BOARD chromeos-mrc --getbinpkg --binpkg-respect-use=n
+        # build the need files
+            emerge-$BOARD coreboot-private-files
+            emerge-$BOARD coreboot-private-files-baseboard-coral
+            emerge-$BOARD nhlt-blobs
+        # start that we need build
+            cros_workon-$BOARD start chromeos-ec libpayload depthcharge coreboot 
+        # start building....
+            emerge-$BOARD chromeos-firmware-ps8751 chromeos-firmware-anx3429 chromeos-ec chromeos-seabios libpayload depthcharge coreboot chromeos-bootimage
+        # stop all
+            cros_workon-$BOARD --all stop 
+        ;;
+        "octopus") 
+        # workon board
+            cros_workon-$BOARD start coreboot 
+        # start building....
+            emerge-$BOARD chromeos-ec coreboot chromeos-bootimage
+        # stop all
+            cros_workon-$BOARD --all stop 
+        ;;
+        "*")
+            echo -e "\033[41;37;5m The Boaid id input isn't supporting by this script!! \033[0m";
+        ;;
+    esac
     return 0;
 }
 
@@ -307,12 +351,12 @@ function build_autotest(){
 # build autotest
     cros_workon-$BOARD start autotest-chrome autotest-deps autotest-tests autotest
     emerge-$BOARD autotest-chrome autotest-deps autotest-tests autotest
-    cros_workon-$BOARD stop autotest-chrome autotest-deps autotest-tests autotest
     if [ $? -ne 0 ];then
         echo "\033[41;37;5m build autotest failed!! \033[0m"
         exit 1;
     fi
     echo -e "\033[44;37;5m build autotest successfully!! \033[0m"
+    cros_workon-$BOARD stop autotest-chrome autotest-deps autotest-tests autotest
     return 0
 }
 function build_env_fun(){
@@ -340,16 +384,28 @@ function flash_bios_fun(){
         echo -e "\033[41;37;5m The bios file of $BOARD doesn't exist \033[0m"
         exit 1
     fi
-    dut-control spi2_buf_en:on spi2_buf_on_flex_en:on spi2_vref:pp3300 cold_reset:on
-    echo -e "\033[44;37;5m start flash bios \033[0m"
-    sudo flashrom -V -p ft2232_spi:type=servo-v2 -w $filename
-    if [ $? -ne 0  ];then
+    case $BOARD in
+        "corad")
+            dut-control spi2_buf_en:on spi2_buf_on_flex_en:on spi2_vref:pp3300 cold_reset:on
+            sudo flashrom -V -p ft2232_spi:type=servo-v2 -w $filename
+            flash_result=$?
+            dut-control spi2_buf_en:off spi2_buf_on_flex_en:off spi2_vref:off cold_reset:off
+            ;;
+        "octopus")
+            dut-control spi2_buf_en:on spi2_buf_on_flex_en:on spi2_vref:pp1800 cold_reset:on   
+	    echo $filename       
+            sudo flashrom -V -p ft2232_spi:type=servo-v2 -w $filename
+            flash_result=$?
+            dut-control spi2_buf_en:on spi2_buf_on_flex_en:on spi2_vref:pp1800 cold_reset:off
+        ;;
+        "*")
+            echo -e "\033[41;37;5m The Boaid id input isn't supporting by this script!! \033[0m";
+            exit 1
+
+        ;;
+    esac
+    if [ $flash_result -ne 0  ];then
         echo -e "\033[41;37;5m flash BIOS failed!!!\033[0m";
-        exit 1
-    fi
-    dut-control spi2_buf_en:off spi2_buf_on_flex_en:off spi2_vref:off cold_reset:off
-    if [ $? -ne 0 ];then
-        echo -e "\033[41;37;5m  turn off all pins failed!!!\033[0m";
         exit 1
     fi
     echo -e "\033[44;37;5m flash BIOS and turn off all pins successfully!!!\033[0m";
@@ -364,8 +420,18 @@ function flash_ec_fun(){
         exit 1;
     fi
     echo -e "\033[44;37;5m start flash ec \033[0m"
-    ~/trunk/src/platform/ec/util/flash_ec --board=$BOARD --image=$filename
-
+    case $BOARD in
+        "coral")
+            ~/trunk/src/platform/ec/util/flash_ec --board=$BOARD --image=$filename
+        ;;
+        "octopus")
+            ~/trunk/src/platform/ec/util/flash_ec --board=phaser --image=$filename
+        ;;
+        "*")
+            echo -e "\033[41;37;5m The Boaid id input isn't supporting by this script!! \033[0m";
+            exit 1
+        ;;
+    esac
     if [ $? -ne 0  ];then
         echo -e "\033[41;37;5m flash ec failed!! \033[0m"
         exit 1
@@ -396,7 +462,15 @@ function flash_image_fun(){
 			exit 1;   			
    		fi
 	done
-    /usr/bin/test_that --board=coral $IP_Add --args="image=$os_image_filepath" platform_InstallTestImage
+    case $BOARD in
+        "coral")
+            /usr/bin/test_that --board=coral $IP_Add --args="image=$os_image_filepath" platform_InstallTestImage
+        ;;
+        "*")
+            echo -e "\033[41;37;5m The BOARD_ID is wrong! pls checnk it!! \033[0m"
+            exit 1
+        ;;
+    esac
 	if [ $? -ne 0 ];then
 		echo -e "\033[41;37;5m flash OS_Image failed!! \033[0m"
 		exit 1
